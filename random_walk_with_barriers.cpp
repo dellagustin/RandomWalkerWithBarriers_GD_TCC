@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #ifndef BOOL
@@ -252,14 +253,14 @@ void CWalker::manageCellPosition(const CWalkerCellBounds& cellBounds)
 	}
 }
 
-// }} end of CWalker implementation 
+// }} end of CWalker implementation
 
 int main(int argc, const char* argv[])
 {
 	CWalker *pWalkerArray = NULL;
 	CWalkerCircularBarrier *pWalkerBarrierArray = NULL;
 	CWalkerCellBounds cellBounds;
-    int nWalkers, nIterations, nBarriers, nInterferenceCounter, i, j, k;
+    unsigned int nWalkers, nIterations, nBarriers, nInterferenceCounter, i, j, k;
     double fBarrierRadius;
 	FILE *pOutStream = stdout;
 	
@@ -271,6 +272,34 @@ int main(int argc, const char* argv[])
 	cellBounds.m_fymax= 100.0;
 	fBarrierRadius = 1.0;
 	
+	// read the command line arguments
+	for(i = 0; i < argc; i++)
+	{
+		// size_t nArgLength = strlen(argv[i]);
+		
+		// if(nArgLength < 2)
+			
+		if(argv[i][0] != '-')
+			continue;
+		
+		if(!strcmp(argv[i]+1, "w"))
+		{
+			nWalkers = atoi(argv[i+1]);
+		}
+		else if(!strcmp(argv[i]+1, "i"))
+		{
+			nIterations = atoi(argv[i+1]);
+		}
+		else if(!strcmp(argv[i]+1, "b"))
+		{
+			nBarriers = atoi(argv[i+1]);
+		}
+		else if(!strcmp(argv[i]+1, "br"))
+		{
+			fBarrierRadius = atof(argv[i+1]);
+		}
+	}
+	
 	// out vars
 	nInterferenceCounter = 0;
 	
@@ -280,6 +309,7 @@ int main(int argc, const char* argv[])
 	fprintf(pOutStream, "# walkers: %d\n", nWalkers);
 	fprintf(pOutStream, "# iterations: %d\n", nIterations);
 	fprintf(pOutStream, "# barriers: %d\n", nBarriers);
+	fprintf(pOutStream, "# barriers radius: %f\n", fBarrierRadius);
 	fprintf(pOutStream, "# min bounds: %f, %f\n", cellBounds.m_fxmin, cellBounds.m_fymin); 
 	fprintf(pOutStream, "# max bounds: %f, %f\n", cellBounds.m_fxmax, cellBounds.m_fymax); 
 	    
@@ -295,7 +325,7 @@ int main(int argc, const char* argv[])
 	{
 		pWalkerBarrierArray[i].m_position.m_fx = cellBounds.m_fxmin + randomNumber(cellBounds.width());
 		pWalkerBarrierArray[i].m_position.m_fy = cellBounds.m_fymin + randomNumber(cellBounds.height());
-		pWalkerBarrierArray[i].m_radius = 1.0;
+		pWalkerBarrierArray[i].m_radius = fBarrierRadius;
 		
 		// fprintf(stdout, "%f\t%f\n", pWalkerBarrierArray[i].m_position.m_fx, pWalkerBarrierArray[i].m_position.m_fy);
 	}
@@ -313,13 +343,6 @@ int main(int argc, const char* argv[])
     // iteration in 'time'
 	for(j = 0; j < nIterations; j++)
     {
-		/*
-		if(j & 0x0001 << 8)
-		{
-			fprintf(stdout, "Iterating: %d\n", j);
-		}
-		*/
-		
 		double fAverageSquareDistance = 0.0;
 		double fAverageX = 0.0;
 		double fAverageY = 0.0;
@@ -327,7 +350,7 @@ int main(int argc, const char* argv[])
 		// iteration in walkers
 		for(i = 0 ; i < nWalkers; i++)
 		{
-			CWalkerPoint oldPoint = pWalkerArray[i].m_position;
+			CWalker oldWalker = pWalkerArray[i];
 			BOOL bOutOfBarriers;
 			BOOL bBouncedOnBarrier = FALSE;
 			
@@ -346,7 +369,8 @@ int main(int argc, const char* argv[])
 						bOutOfBarriers = FALSE;
 						bBouncedOnBarrier = TRUE;
 						// fprintf(stdout, "# Barrier. j:%d, i:%d, k:%d, bp: %f, %f, wp:%f, %f\n", j, i, k, pWalkerBarrierArray[k].m_position.m_fx, pWalkerBarrierArray[k].m_position.m_fy, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy);
-						pWalkerArray[i].m_position = oldPoint;
+						// pWalkerArray[i].m_position = oldPoint;
+						pWalkerArray[i] = oldWalker; 
 						break;
 					}
 				}
@@ -356,8 +380,6 @@ int main(int argc, const char* argv[])
 			if(bBouncedOnBarrier)
 				nInterferenceCounter++;
 				
-			
-			// 
 			fAverageSquareDistance += pWalkerArray[i].squareDistanceFromOrigin(&cellBounds);
 			fAverageX += pWalkerArray[i].m_position.m_fx;
 			fAverageY += pWalkerArray[i].m_position.m_fy;
