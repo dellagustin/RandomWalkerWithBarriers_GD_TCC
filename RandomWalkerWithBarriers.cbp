@@ -11,6 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option parameters=" -w 2000 -i 4000 -b 200 -br 1.0 &gt; ./res_2010_04_29/res32_1.dat" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
