@@ -15,14 +15,23 @@ typedef unsigned int BOOL;
 #define FALSE (0)
 #endif
 
+// general helper function declaration {{
+
 // returns a random number between 0.0 and fMaxValue
 double randomNumber(double fMaxValue);
 
 // returns a random angle between 0.0 and 2*pi
 double randomAngle();
 
+// set the random number seed
+BOOL randomSeed();
+
 // returns the square of fValue
 double square(double fValue);
+
+// }} general helper function declaration
+
+// general helper function definition {{
 
 double randomNumber(double fMaxValue)
 {
@@ -34,12 +43,36 @@ double randomAngle()
     return randomNumber(2.0*M_PI);
 }
 
+BOOL randomSeed()
+{
+    FILE *pRandomFile;
+    int nSeed;
+
+    pRandomFile = fopen("/dev/urandom", "rb");
+
+    if(pRandomFile)
+    {
+        fread(&nSeed, sizeof(nSeed), 1, pRandomFile);
+        fclose(pRandomFile);
+
+        srand(nSeed);
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 double square(double fValue)
 {
 	return fValue * fValue;
 }
 
-//
+// }} general helper function definition
+
+// CWalkerCellBounds {{
+
+// class that represents the bounds of a cell
 class CWalkerCellBounds
 {
 	// constructor
@@ -58,6 +91,15 @@ public:
 	double m_fymax;
 };
 
+// constructor
+CWalkerCellBounds::CWalkerCellBounds()
+{
+	m_fxmin = 0.0;
+	m_fxmax = 0.0;
+	m_fymin = 0.0;
+	m_fymax = 0.0;
+}
+
 double CWalkerCellBounds::height() const
 {
 	return m_fymax - m_fymin;
@@ -68,14 +110,9 @@ double CWalkerCellBounds::width() const
 	return m_fxmax - m_fxmin;
 }
 
-// constructor
-CWalkerCellBounds::CWalkerCellBounds()
-{
-	m_fxmin = 0.0;
-	m_fxmax = 0.0;
-	m_fymin = 0.0;
-	m_fymax = 0.0;
-}
+// }} CWalkerCellBounds
+
+// CWalkerCell {{
 
 // class that represent the cell position of a walker
 class CWalkerCell
@@ -95,6 +132,8 @@ CWalkerCell::CWalkerCell()
 	m_nx = 0;
 	m_ny = 0;
 }
+
+// }} CWalkerCell
 
 // class that represents a point in two dimensions
 class CWalkerPoint
@@ -146,18 +185,6 @@ CWalkerCircularBarrier::CWalkerCircularBarrier()
 {
 	m_radius = 1.0;
 }
-
-/*
-BOOL iterateWithMovingPoint(const CWalkerPoint& pointPosIni, CWalkerPoint& pointPosEnd) const
-{
-	if(pointPosEnd.squareDistanceTo(m_position) < square(m_radius))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-*/
 
 BOOL CWalkerCircularBarrier::isInside(const CWalkerPoint& point) const
 {
@@ -255,21 +282,113 @@ void CWalker::manageCellPosition(const CWalkerCellBounds& cellBounds)
 
 // }} end of CWalker implementation
 
+// verify if point lies inside one of the barriers of the array pcBarriers
+BOOL isInsideBarrier(const CWalkerPoint& point, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers);
+
+// do the walker iteration
+// returns TRUE if the walker interacted with the barriers
+// {{
+
+// simple iteration, ignore barriers
+BOOL iterateWalkerWithBarriers0(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds*);
+
+// iterate until the walker is in a valid position (reset the position at every attempt).
+BOOL iterateWalkerWithBarriers1(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds*);
+
+// try to move the walker, if theres a berrir blocking resets the position and returns.
+BOOL iterateWalkerWithBarriers2(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds*);
+
+// reflects the walker at the barriers
+BOOL iterateWalkerWithBarriers3(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds*);
+
+// }}
+
+BOOL isInsideBarrier(const CWalkerPoint& point, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers)
+{
+    unsigned int i = 0;
+    for(i = 0; i < nBarriers; i++)
+    {
+        if(pcBarrier[i].isInside(point))
+        {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+BOOL iterateWalkerWithBarriers0(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds* pCellBounds)
+{
+    walker.iterate(1, pCellBounds);
+    return FALSE;
+}
+
+BOOL iterateWalkerWithBarriers1(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds* pCellBounds)
+{
+    CWalker oldWalker = walker;
+    BOOL bOutOfBarriers;
+    BOOL bBouncedOnBarrier = FALSE;
+
+    // itetates until it falls out of a barrier
+    do
+    {
+        walker.iterate(1, pCellBounds);
+        // fprintf(stdout, "# AfterIterate. j:%d, i:%d, wp:%f, %f\n", j, i, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy);
+
+        bOutOfBarriers = TRUE;
+
+        if(isInsideBarrier(walker.m_position, pcBarrier, nBarriers))
+        {
+            bOutOfBarriers = FALSE;
+            bBouncedOnBarrier = TRUE;
+            walker = oldWalker;
+        }
+    }
+    while(!bOutOfBarriers);
+
+    return bBouncedOnBarrier;
+}
+
+BOOL iterateWalkerWithBarriers2(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds* pCellBounds)
+{
+    CWalker oldWalker = walker;
+
+    walker.iterate(1, pCellBounds);
+
+    if(isInsideBarrier(walker.m_position, pcBarrier, nBarriers))
+    {
+        walker = oldWalker;
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+BOOL iterateWalkerWithBarriers3(CWalker &walker, const CWalkerCircularBarrier* pcBarrier, unsigned int nBarriers, const CWalkerCellBounds* pCellBounds)
+{
+    return FALSE;
+}
+
+
 int main(int argc, const char* argv[])
 {
 	CWalker *pWalkerArray = NULL;
 	CWalkerCircularBarrier *pWalkerBarrierArray = NULL;
 	CWalkerCellBounds cellBounds;
+	CWalkerPoint pntOrigin;
     unsigned int nWalkers;
     unsigned int nIterations;
     unsigned int nBarriers;
     unsigned int nInterferenceCounter;
     unsigned int nBarrierPlacementAttempts;
-    unsigned int i, j, k; // iteration steps
+    unsigned int nBarrierActionMethod;
+    unsigned int i, j; //, k; // iteration steps
     double fBarrierRadius;
 	FILE *pOutStream = stdout;
 
 	// default parameters
+	nBarrierActionMethod = 1;
 	nBarriers = 200;
     nWalkers = 1000;
     nIterations = 1000;
@@ -299,7 +418,11 @@ int main(int argc, const char* argv[])
 		{
 			fBarrierRadius = atof(argv[i+1]);
 		}
-	}
+		else if(!strcmp(argv[i]+1, "m"))
+		{
+			nBarrierActionMethod = atoi(argv[i+1]);
+		}
+    }
 
 	// out vars
 	nInterferenceCounter = 0;
@@ -313,6 +436,9 @@ int main(int argc, const char* argv[])
 	fprintf(pOutStream, "# barriers radius: %f\n", fBarrierRadius);
 	fprintf(pOutStream, "# min bounds: %f, %f\n", cellBounds.m_fxmin, cellBounds.m_fymin);
 	fprintf(pOutStream, "# max bounds: %f, %f\n", cellBounds.m_fxmax, cellBounds.m_fymax);
+
+	// randomize random seed
+	randomSeed();
 
     // allocate memory
 	if(nWalkers)
@@ -373,24 +499,18 @@ int main(int argc, const char* argv[])
 
 	// }} place the barriers
 
+	do
+	{
+		pntOrigin.m_fx = cellBounds.m_fxmin + randomNumber(cellBounds.width());
+		pntOrigin.m_fy = cellBounds.m_fymin + randomNumber(cellBounds.height());
+	}
+	while(isInsideBarrier(pntOrigin, pWalkerBarrierArray, nBarriers));
+
 	for(i = 0; i < nWalkers; i++)
 	{
-	    /*
-	    BOOL bIsInsideBarrier = FALSE;
-
-	    do
-	    {
-            pWalkerArray[i].m_origin.m_fx = cellBounds.m_fxmin + 0.5 * cellBounds.width();
-            pWalkerArray[i].m_origin.m_fy = cellBounds.m_fymin + 0.5 * cellBounds.height();
-            pWalkerArray[i].m_position.m_fx = pWalkerArray[i].m_origin.m_fx;
-            pWalkerArray[i].m_position.m_fy = pWalkerArray[i].m_origin.m_fy;
-	    }
-	    while(bIsInsideBarrier);
-	    */
-	    pWalkerArray[i].m_origin.m_fx = cellBounds.m_fxmin + 0.5 * cellBounds.width();
-        pWalkerArray[i].m_origin.m_fy = cellBounds.m_fymin + 0.5 * cellBounds.height();
-        pWalkerArray[i].m_position.m_fx = pWalkerArray[i].m_origin.m_fx;
-        pWalkerArray[i].m_position.m_fy = pWalkerArray[i].m_origin.m_fy;
+		pWalkerArray[i].m_origin = pntOrigin;
+		pWalkerArray[i].m_position.m_fx = pWalkerArray[i].m_origin.m_fx;
+		pWalkerArray[i].m_position.m_fy = pWalkerArray[i].m_origin.m_fy;
     }
 
     // iteration in 'time'
@@ -403,32 +523,24 @@ int main(int argc, const char* argv[])
 		// iteration in walkers
 		for(i = 0 ; i < nWalkers; i++)
 		{
-			CWalker oldWalker = pWalkerArray[i];
-			BOOL bOutOfBarriers;
 			BOOL bBouncedOnBarrier = FALSE;
 
-			// itetates until it falls out of a barrier
-			do
+			switch(nBarrierActionMethod)
 			{
-				pWalkerArray[i].iterate(1, &cellBounds);
-				// fprintf(stdout, "# AfterIterate. j:%d, i:%d, wp:%f, %f\n", j, i, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy);
-
-				bOutOfBarriers = TRUE;
-
-				for(k = 0; k < nBarriers; k++)
-				{
-					if(pWalkerBarrierArray[k].isInside(pWalkerArray[i].m_position))
-					{
-						bOutOfBarriers = FALSE;
-						bBouncedOnBarrier = TRUE;
-						// fprintf(stdout, "# Barrier. j:%d, i:%d, k:%d, bp: %f, %f, wp:%f, %f\n", j, i, k, pWalkerBarrierArray[k].m_position.m_fx, pWalkerBarrierArray[k].m_position.m_fy, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy);
-						// pWalkerArray[i].m_position = oldPoint;
-						pWalkerArray[i] = oldWalker;
-						break;
-					}
-				}
+            default:
+            case 0:
+                bBouncedOnBarrier = iterateWalkerWithBarriers0(pWalkerArray[i], pWalkerBarrierArray, nBarriers, &cellBounds);
+                break;
+            case 1:
+                bBouncedOnBarrier = iterateWalkerWithBarriers1(pWalkerArray[i], pWalkerBarrierArray, nBarriers, &cellBounds);
+                break;
+            case 2:
+                bBouncedOnBarrier = iterateWalkerWithBarriers2(pWalkerArray[i], pWalkerBarrierArray, nBarriers, &cellBounds);
+                break;
+            case 3:
+                bBouncedOnBarrier = iterateWalkerWithBarriers3(pWalkerArray[i], pWalkerBarrierArray, nBarriers, &cellBounds);
+                break;
 			}
-			while(!bOutOfBarriers);
 
 			if(bBouncedOnBarrier)
 				nInterferenceCounter++;
