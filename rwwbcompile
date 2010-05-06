@@ -1,0 +1,2 @@
+#!/bin/bash
+g++ random_walk_with_barriers.cpp -o randomwwb

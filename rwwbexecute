@@ -1,0 +1,30 @@
+#!/bin/bash
+echo res0_1
+./randomwwb -w 3000 -i 4000 -b 0 -br 1.0 > ./res_2010_05_02/res0_1.dat
+echo res1_1
+./randomwwb -w 3000 -i 4000 -b 100 -br 1.0 > ./res_2010_05_02/res1_1.dat
+echo res2_1
+./randomwwb -w 3000 -i 4000 -b 200 -br 1.0 > ./res_2010_05_02/res2_1.dat
+echo res3_1
+./randomwwb -w 3000 -i 4000 -b 300 -br 1.0 > ./res_2010_05_02/res3_1.dat
+echo res4_1
+./randomwwb -w 3000 -i 4000 -b 400 -br 1.0 > ./res_2010_05_02/res4_1.dat
+echo res0_2
+./randomwwb -w 3000 -i 4000 -b 0 -br 2.0 > ./res_2010_05_02/res0_2.dat
+echo res1_2
+./randomwwb -w 3000 -i 4000 -b 100 -br 2.0 > ./res_2010_05_02/res1_2.dat
+echo res2_2
+./randomwwb -w 3000 -i 4000 -b 200 -br 2.0 > ./res_2010_05_02/res2_2.dat
+echo res3_2
+./randomwwb -w 3000 -i 4000 -b 300 -br 2.0 > ./res_2010_05_02/res3_2.dat
+echo res4_2
+./randomwwb -w 3000 -i 4000 -b 400 -br 2.0 > ./res_2010_05_02/res4_2.dat
+
+echo res4_1_2
+./randomwwb -w 3000 -i 4000 -b 400 -br 1.2 > ./res_2010_05_02/res4_1_2.dat
+echo res4_1_4
+./randomwwb -w 3000 -i 4000 -b 400 -br 1.4 > ./res_2010_05_02/res4_1_4.dat
+echo res4_1_6
+./randomwwb -w 3000 -i 4000 -b 400 -br 1.6 > ./res_2010_05_02/res4_1_6.dat
+echo res4_1_8
+./randomwwb -w 3000 -i 4000 -b 400 -br 1.8 > ./res_2010_05_02/res4_1_8.dat
