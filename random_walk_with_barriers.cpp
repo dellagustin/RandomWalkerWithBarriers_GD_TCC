@@ -531,6 +531,7 @@ int main(int argc, const char* argv[])
 		double fAverageSquareDistance = 0.0;
 		double fAverageX = 0.0;
 		double fAverageY = 0.0;
+		unsigned int nOldInterferenceCounter = nInterferenceCounter;
 
 		// iteration in walkers
 		for(i = 0 ; i < nWalkers; i++)
@@ -565,7 +566,7 @@ int main(int argc, const char* argv[])
 		fAverageSquareDistance /= (double)nWalkers;
 		fAverageX /= (double)nWalkers;
 		fAverageY /= (double)nWalkers;
-		fprintf(pOutStream, "%d\t%f\t%f\t%f\t\%d\n", j, fAverageSquareDistance, fAverageX, fAverageY, nInterferenceCounter);
+		fprintf(pOutStream, "%d\t%f\t%f\t%f\t\%u\t%u\n", j, fAverageSquareDistance, fAverageX, fAverageY, nInterferenceCounter, nInterferenceCounter - nOldInterferenceCounter);
     }
 
 	// deallocate memory
