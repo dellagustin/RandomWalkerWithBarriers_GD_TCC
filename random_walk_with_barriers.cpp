@@ -88,6 +88,7 @@ public:
 	// methods
 	double height() const;
 	double width() const;
+	double area() const;
 
 	// data
 public:
@@ -114,6 +115,11 @@ double CWalkerCellBounds::height() const
 double CWalkerCellBounds::width() const
 {
 	return m_fxmax - m_fxmin;
+}
+
+double CWalkerCellBounds::area() const
+{
+    return height()*width();
 }
 
 // }} CWalkerCellBounds
@@ -395,6 +401,8 @@ int main(int argc, const char* argv[])
     unsigned int nSeed;
     unsigned int i, j; //, k; // iteration steps
     double fBarrierRadius;
+    double fOccupiedArea;
+    double fOccupiedAreaRatio;
 	FILE *pOutStream = stdout;
 
 	// default parameters
@@ -405,6 +413,7 @@ int main(int argc, const char* argv[])
 	cellBounds.m_fxmax = 100.0;
 	cellBounds.m_fymax= 100.0;
 	fBarrierRadius = 1.0;
+	fOccupiedArea = 0.0;
 	nSeed = RAND_MAX;
 
 	// read the command line arguments
@@ -515,9 +524,13 @@ int main(int argc, const char* argv[])
 	    }
 	    while(bHasInterference);
 		// fprintf(stdout, "%f\t%f\n", pWalkerBarrierArray[i].m_position.m_fx, pWalkerBarrierArray[i].m_position.m_fy);
+
+		fOccupiedArea += M_PI*square(pWalkerBarrierArray[i].m_radius);
 	}
 
+    fOccupiedAreaRatio = fOccupiedArea/(cellBounds.area());
 	fprintf(pOutStream, "# attempts to place barriers: %d\n", nBarrierPlacementAttempts);
+	fprintf(pOutStream, "# ocupied area ratio: %f\n", fOccupiedAreaRatio);
 
 	// }} place the barriers
 
@@ -576,7 +589,7 @@ int main(int argc, const char* argv[])
 		fAverageSquareDistance /= (double)nWalkers;
 		fAverageX /= (double)nWalkers;
 		fAverageY /= (double)nWalkers;
-		fprintf(pOutStream, "%d\t%f\t%f\t%f\t\%u\t%u\n", j, fAverageSquareDistance, fAverageX, fAverageY, nInterferenceCounter, nInterferenceCounter - nOldInterferenceCounter);
+		fprintf(pOutStream, "%d\t%f\t%f\t%f\t\%u\t%u\t%f\n", j, fAverageSquareDistance, fAverageX, fAverageY, nInterferenceCounter, nInterferenceCounter - nOldInterferenceCounter, fAverageSquareDistance*fOccupiedAreaRatio);
     }
 
 	// deallocate memory
