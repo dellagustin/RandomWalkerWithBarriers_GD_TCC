@@ -31,6 +31,8 @@ BOOL randomSeed(unsigned int *pnSeed = NULL);
 // returns the square of fValue
 double square(double fValue);
 
+void close_stream(FILE*&);
+
 // }} general helper function declaration
 
 // general helper function definition {{
@@ -73,6 +75,16 @@ BOOL randomSeed(unsigned int *pnSeed)
 double square(double fValue)
 {
 	return fValue * fValue;
+}
+
+void close_stream(FILE*& pStream)
+{
+	if(pStream && pStream != stdout && pStream != stderr)
+    {
+        fclose(pStream);
+    }
+
+    pStream = NULL;
 }
 
 // }} general helper function definition
@@ -401,7 +413,8 @@ int main(int argc, const char* argv[])
     unsigned int nBarrierPlacementAttempts;
     unsigned int nBarrierActionMethod;
     unsigned int nSeed;
-    unsigned int i, j; //, k; // iteration steps
+    unsigned int nStepsToShowErr;
+    unsigned int i, j, k; // iteration steps
     double fBarrierRadius;
     double fOccupiedArea;
     double fOccupiedAreaRatio;
@@ -409,6 +422,7 @@ int main(int argc, const char* argv[])
     double fDesiredOcupiedArea;
     FILE *pStatisticsOutStream = stdout;
 	FILE *pWalkersOutStream = NULL;
+	FILE *pWalkersStartOutStream = NULL;
 	FILE *pBarriersOutStream = NULL;
 	struct timeval time_data_start;
 	struct timeval time_data_current;
@@ -485,7 +499,19 @@ int main(int argc, const char* argv[])
                 return 0;
             }
 		}
+		else if(!strcmp(argv[i]+1, "wsof")) // out file for barrier position...
+		{
+            pWalkersStartOutStream = fopen(argv[i+1], "wt");
+
+            if(!pWalkersStartOutStream)
+            {
+                fprintf(stderr, "# Failed to open file for walkers starting position data storage.\n");
+                return 0;
+            }
+		}
     }
+
+    nStepsToShowErr = nIterations/10;
 
 	// out vars
 	nInterferenceCounter = 0;
@@ -580,9 +606,20 @@ int main(int argc, const char* argv[])
 			if(pBarriersOutStream)
 			{
 				fprintf(pBarriersOutStream, "%f\t%f\t%f\n", pWalkerBarrierArray[j].m_position.m_fx, pWalkerBarrierArray[j].m_position.m_fy, pWalkerBarrierArray[j].m_radius);
+
+				// desperate measures
+				for(k = 0; k < 100; k++)
+				{
+					fprintf(pBarriersOutStream, "%f\t%f\t%f\n",
+					pWalkerBarrierArray[j].m_position.m_fx + pWalkerBarrierArray[j].m_radius * cos(2.0*M_PI*((double)k)/100.0),
+					pWalkerBarrierArray[j].m_position.m_fy + pWalkerBarrierArray[j].m_radius * sin(2.0*M_PI*((double)k)/100.0),
+					pWalkerBarrierArray[j].m_radius);
+				}
 			}
 		}
 	}
+
+	close_stream(pBarriersOutStream);
 
 	gettimeofday(&time_data_current, NULL);
 	fprintf(stderr, "# %u Barriers Placed in %u seconds.\n", nBarriers, (unsigned int)(time_data_current.tv_sec - time_data_old.tv_sec));
@@ -596,8 +633,16 @@ int main(int argc, const char* argv[])
 
 	// }} place the barriers
 
+	// place the walkers {{
+
 	gettimeofday(&time_data_old, NULL);
     fprintf(stderr, "# Placing %u Walkers.\n", nWalkers);
+
+    if(pWalkersStartOutStream)
+	{
+		fprintf(pWalkersStartOutStream, "# Walkers Starting Position File\n");
+		fprintf(pWalkersStartOutStream, "# Walker\tx\ty\n");
+	}
 
 	for(i = 0; i < nWalkers; i++)
 	{
@@ -606,13 +651,22 @@ int main(int argc, const char* argv[])
 			pWalkerArray[i].m_origin.m_fx = cellBounds.m_fxmin + randomNumber(cellBounds.width());
 			pWalkerArray[i].m_origin.m_fy = cellBounds.m_fymin + randomNumber(cellBounds.height());
 		}
-		while(isInsideBarrier(pntOrigin, pWalkerBarrierArray, nBarriers));
+		while(isInsideBarrier(pWalkerArray[i].m_origin, pWalkerBarrierArray, nBarriers));
 
 		pWalkerArray[i].m_position = pWalkerArray[i].m_origin;
-    }
+
+		if(pWalkersStartOutStream)
+		{
+			fprintf(pWalkersStartOutStream, "%d\t%f\t%f\n", i, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy);
+		}
+	}
+
+    close_stream(pWalkersStartOutStream);
 
     gettimeofday(&time_data_current, NULL);
     fprintf(stderr, "# %u Walkers Placed in %u seconds.\n", nWalkers, (unsigned int)(time_data_current.tv_sec - time_data_old.tv_sec));
+
+    // }} place the walkers
 
 	gettimeofday(&time_data_old, NULL);
     fprintf(stderr, "# Starting simulation.\n");
@@ -671,6 +725,21 @@ int main(int argc, const char* argv[])
             nBarriers
             );
 		}
+
+		if(!(j % nStepsToShowErr))
+		{
+			gettimeofday(&time_data_current, NULL);
+			fprintf(stderr, "%.2f %% Complete in %d seconds.\n", 100.0*((double)j)/((double)nIterations), (unsigned int)(time_data_current.tv_sec - time_data_old.tv_sec));
+			fprintf(stderr, "%d\t%f\t%u\t%u\t%f\t%f\t%u\n",
+            j,
+            fAverageSquareDistance,
+            nInterferenceCounter,
+            nInterferenceCounter - nOldInterferenceCounter,
+            fOccupiedAreaRatio,
+            fTotalBarrierPerimeter,
+            nBarriers
+            );
+		}
     }
 
 	gettimeofday(&time_data_current, NULL);
@@ -678,23 +747,8 @@ int main(int argc, const char* argv[])
 
 clean_up:
 
-    if(pStatisticsOutStream && pStatisticsOutStream != stdout && pStatisticsOutStream != stderr)
-    {
-        fclose(pStatisticsOutStream);
-        pStatisticsOutStream = NULL;
-    }
-
-    if(pBarriersOutStream && pBarriersOutStream != stdout && pStatisticsOutStream != stderr)
-    {
-        fclose(pBarriersOutStream);
-        pBarriersOutStream = NULL;
-    }
-
-    if(pWalkersOutStream && pWalkersOutStream != stdout && pStatisticsOutStream != stderr)
-    {
-        fclose(pWalkersOutStream);
-        pWalkersOutStream = NULL;
-    }
+	close_stream(pStatisticsOutStream);
+	close_stream(pWalkersOutStream);
 
 	// deallocate memory
 	delete [] pWalkerArray;
