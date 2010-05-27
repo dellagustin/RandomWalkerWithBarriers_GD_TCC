@@ -39,18 +39,18 @@ void parse_cmd_line(int argc, char* argv[], main_data& data)
 		if(argv[i][0]!='-')
 			continue;
 
-		if(strcmp(argv[i]+1, "ua")) // use fixed area
+		if(!strcmp(argv[i]+1, "ua")) // use fixed area
 		{
 			data.bByArea = TRUE;
 		}
-		else if(strcmp(argv[i]+1, "da")) // desired area
+		else if(!strcmp(argv[i]+1, "da")) // desired area
 		{
-			if(i+1 < argc) continue;
+			if(i+1 >= argc) continue;
 			data.fDesiredOccupiedArea = atof(argv[i+1]);
 		}
-		else if(strcmp(argv[i]+1, "ns")) // desired area
+		else if(!strcmp(argv[i]+1, "ns")) // desired area
 		{
-			if(i+1 < argc) continue;
+			if(i+1 >= argc) continue;
 			data.nScripts = atoi(argv[i+1]);
 		}
 	}
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     data.nWalkers = 8000;
     data.nIterations = 8000;
 	data.bByArea = TRUE;
-    data.fDesiredOccupiedArea = 0.5;
+    data.fDesiredOccupiedArea = 5000;
     data.nScripts = 20;
     data.nBarriersMax = 1600;
     data.nBarriersMin = 1;
