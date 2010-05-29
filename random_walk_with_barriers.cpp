@@ -3,30 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include <sys/time.h>
-
-#ifndef BOOL
-typedef unsigned int BOOL;
-#endif
-
-#ifndef TRUE
-#define TRUE (-1)
-#endif
-
-#ifndef FALSE
-#define FALSE (0)
-#endif
+#include "rwwb_common.h"
 
 // general helper function declaration {{
-
-// returns a random number between 0.0 and fMaxValue
-double randomNumber(double fMaxValue);
-
-// returns a random angle between 0.0 and 2*pi
-double randomAngle();
-
-// set the random number seed, if pnSeed != NULL set *pnSeed to the seed used
-// return TRUE at success, otherwise return FALSE
-BOOL randomSeed(unsigned int *pnSeed = NULL);
 
 // returns the square of fValue
 double square(double fValue);
@@ -36,41 +15,6 @@ void close_stream(FILE*&);
 // }} general helper function declaration
 
 // general helper function definition {{
-
-double randomNumber(double fMaxValue)
-{
-	return fMaxValue*((double)rand()/((double)RAND_MAX));
-}
-
-double randomAngle()
-{
-    return randomNumber(2.0*M_PI);
-}
-
-BOOL randomSeed(unsigned int *pnSeed)
-{
-    FILE *pRandomFile;
-    unsigned int nSeed;
-
-    pRandomFile = fopen("/dev/urandom", "rb");
-
-    if(pRandomFile)
-    {
-		fread(&nSeed, sizeof(nSeed), 1, pRandomFile);
-        fclose(pRandomFile);
-
-        if(pnSeed)
-        {
-            *pnSeed = nSeed;
-        }
-
-        srand(nSeed);
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
 
 double square(double fValue)
 {
@@ -509,6 +453,16 @@ int main(int argc, const char* argv[])
                 return 0;
             }
 		}
+		else if(!strcmp(argv[i]+1, "wof")) // out file for barrier position...
+		{
+            pWalkersOutStream = fopen(argv[i+1], "wt");
+
+            if(!pWalkersOutStream)
+            {
+                fprintf(stderr, "# Failed to open file for walkers position data storage.\n");
+                return 0;
+            }
+		}
     }
 
     nStepsToShowErr = nIterations/10;
@@ -644,6 +598,12 @@ int main(int argc, const char* argv[])
 		fprintf(pWalkersStartOutStream, "# Walker\tx\ty\n");
 	}
 
+	if(pWalkersOutStream)
+	{
+		fprintf(pWalkersOutStream, "# Walkers Position File\n");
+		fprintf(pWalkersOutStream, "# t\tWalker\tx\ty\txo\tyo\tr2\n");
+	}
+
 	for(i = 0; i < nWalkers; i++)
 	{
 		do
@@ -658,6 +618,11 @@ int main(int argc, const char* argv[])
 		if(pWalkersStartOutStream)
 		{
 			fprintf(pWalkersStartOutStream, "%d\t%f\t%f\n", i, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy);
+		}
+
+		if(pWalkersOutStream)
+		{
+			fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\n", 0, i, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, 0.0);
 		}
 	}
 
@@ -699,6 +664,11 @@ int main(int argc, const char* argv[])
             case 3:
                 bBouncedOnBarrier = iterateWalkerWithBarriers3(pWalkerArray[i], pWalkerBarrierArray, nBarriers, &cellBounds);
                 break;
+			}
+
+			if(pWalkersOutStream)
+			{
+				fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\n", j, i, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, pWalkerArray[i].squareDistanceFromOrigin());
 			}
 
 			if(bBouncedOnBarrier)

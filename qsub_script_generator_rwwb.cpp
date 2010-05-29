@@ -1,19 +1,9 @@
-// #include <iostream>
 #include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-
-typedef int BOOL;
-
-#ifndef TRUE
-#define TRUE -1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
+#include "rwwb_common.h"
 
 struct main_data
 {
@@ -59,7 +49,7 @@ void parse_cmd_line(int argc, char* argv[], main_data& data)
 int main(int argc, char* argv[])
 {
     struct main_data data;
-    char **ppszFileNames;
+    // char **ppszFileNames;
     memset(&data, 0, sizeof(data));
 
     data.nWalkers = 8000;
@@ -74,11 +64,20 @@ int main(int argc, char* argv[])
 
     parse_cmd_line(argc, argv, data);
 
-    ppszFileNames= new char*[data.nScripts];
-    memset(ppszFileNames, 0, data.nScripts*sizeof(char*));
-
-	if(data.bByArea)
+    if(data.bByArea)
 	{
+		// ppszFileNames= new char*[data.nScripts];
+		// memset(ppszFileNames, 0, data.nScripts*sizeof(char*));
+		FILE *pQSubCallerOutStream = fopen("qsub_caller", "wt");
+
+		if(!pQSubCallerOutStream)
+		{
+			fprintf(stderr, "Impossible to create qsub_caller file.\n");
+			return 0;
+		}
+
+		fprintf(pQSubCallerOutStream, "#!/bin/bash\n");
+
 		// needs some error verification here in the limit values
 		int i;
 		for(i = 0; i < data.nScripts; i++)
@@ -90,26 +89,35 @@ int main(int argc, char* argv[])
 			}
 			while(data.fBarrierRadius >= data.fBarrierRadiusMin && data.fBarrierRadius <= data.fBarrierRadiusMax);
 
-			char szFileName[256];
-			sprintf(szFileName, "w=%d_i=%d_b=%d_br=%.5f.qss", data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius);
-			FILE *pOutFile = fopen(szFileName, "wt");
+			int j;
+			for(j = 0; j < 2; j++)
+			{
+				char szFileName[256];
+				sprintf(szFileName, "s_%d_w_%d_i_%d_b_%d_br_%.5f_m%d.qss", i, data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius, j+1);
+				fprintf(pQSubCallerOutStream, "qsub %s\n", szFileName);
+				fprintf(pQSubCallerOutStream, "sleep 1\n");
+				FILE *pOutFile = fopen(szFileName, "wt");
 
-			if(!pOutFile)
-				continue;
+				if(!pOutFile)
+					continue;
 
-			fprintf(pOutFile, "#!/bin/bash\n\n");
-			fprintf(pOutFile, "#PBS -j oe\n");
-			fprintf(pOutFile, "#PBS -l ncpus=1\n");
-			fprintf(pOutFile, "#PBS -q q_um_dia\n");
-			fprintf(pOutFile, "#PBS -N rwwb_w%di%db%dbr%.5f\n\n", data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius);
-			fprintf(pOutFile, "work_dir=$PBS_O_WORKDIR\n");
-			fprintf(pOutFile, "echo $PBS_O_WORKDIR\n");
-			fprintf(pOutFile, "cd $work_dir\n\n");
-			fprintf(pOutFile, "./rwwbcompile\n");
-			fprintf(pOutFile, "./randomwwb -w %d -i %d -b %d -br %f > test_file.dat\n", data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius);
+				fprintf(pOutFile, "#!/bin/bash\n\n");
+				fprintf(pOutFile, "#PBS -j oe\n");
+				fprintf(pOutFile, "#PBS -l ncpus=1\n");
+				fprintf(pOutFile, "#PBS -q q_um_dia\n");
+				fprintf(pOutFile, "#PBS -N rwwb_s%d_w%d_i%d_b%d_br%.5f_m%d\n\n", i, data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius, j+1);
+				fprintf(pOutFile, "work_dir=$PBS_O_WORKDIR\n");
+				fprintf(pOutFile, "echo $PBS_O_WORKDIR\n");
+				fprintf(pOutFile, "cd $work_dir\n\n");
+				fprintf(pOutFile, "./rwwbcompile\n");
+				fprintf(pOutFile, "./randomwwb -w %d -i %d -b %d -br %f -m %d", data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius, j+1);
+				fprintf(pOutFile, " > res_s%d_w%d_i%d_b%d_br%.5f_m%d.dat", i, data.nWalkers, data.nIterations, data.nBarriers, data.fBarrierRadius, j+1);
 
-			fclose(pOutFile);
+				fclose(pOutFile);
+			}
 		}
+
+		fclose(pQSubCallerOutStream);
 	}
 
     return 0;
