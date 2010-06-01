@@ -668,7 +668,7 @@ int main(int argc, const char* argv[])
 
 			if(pWalkersOutStream)
 			{
-				fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\n", j, i, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, pWalkerArray[i].squareDistanceFromOrigin());
+				fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\n", j+1, i, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, pWalkerArray[i].squareDistanceFromOrigin());
 			}
 
 			if(bBouncedOnBarrier)
