@@ -173,11 +173,16 @@ public:
 	// return the square distance from the origin for this walker
 	double squareDistanceFromOrigin(const CWalkerCellBounds* pcCellBounds = NULL) const;
 
+	// return the square distance from the origin for this walker
+	double distanceFromOrigin(const CWalkerCellBounds* pcCellBounds = NULL) const;
+
 	// iterate the walker with nSteps, and calls manageCellPosition if pcCellBounds != NULL (for each step
 	void iterate(int nSteps = 1, const CWalkerCellBounds* pcCellBounds = NULL);
 
 	// manage the cell position if the walker point is outside bounds
 	void manageCellPosition(const CWalkerCellBounds& cellBounds);
+
+	CWalkerPoint realPosition(const CWalkerCellBounds& cellBounds) const;
 
 public:
 	CWalkerPoint m_origin;
@@ -191,18 +196,19 @@ CWalker::CWalker()
 
 double CWalker::squareDistanceFromOrigin(const CWalkerCellBounds* pcCellBounds) const
 {
-	// TODO still not usin the cell
+	CWalkerPoint position;
+
+	position = pcCellBounds ? realPosition(*pcCellBounds) : m_position;
 
 	double fDeltaX = m_position.m_fx - m_origin.m_fx;
 	double fDeltaY = m_position.m_fy - m_origin.m_fy;
 
-	if(pcCellBounds)
-	{
-		fDeltaX += pcCellBounds->width()*((double)m_cell.m_nx);
-		fDeltaY += pcCellBounds->height()*((double)m_cell.m_ny);
-	}
-
 	return square(fDeltaX) + square(fDeltaY);
+}
+
+double CWalker::distanceFromOrigin(const CWalkerCellBounds* pcCellBounds) const
+{
+	return sqrt(squareDistanceFromOrigin(pcCellBounds));
 }
 
 void CWalker::iterate(int nSteps, const CWalkerCellBounds* pcCellBounds)
@@ -248,6 +254,19 @@ void CWalker::manageCellPosition(const CWalkerCellBounds& cellBounds)
 		m_cell.m_ny++;
 	}
 }
+
+CWalkerPoint CWalker::realPosition(const CWalkerCellBounds& cellBounds) const
+{
+	CWalkerPoint retPoint;
+
+	retPoint = m_position;
+
+	retPoint.m_fx += ((double)m_cell.m_nx)*cellBounds.width();
+	retPoint.m_fy += ((double)m_cell.m_ny)*cellBounds.height();
+
+	return retPoint;
+}
+
 
 // }} end of CWalker implementation
 
@@ -622,7 +641,13 @@ int main(int argc, const char* argv[])
 
 		if(pWalkersOutStream)
 		{
-			fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\n", 0, i, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, 0.0);
+			fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+				0, i,
+				pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
+				pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
+				pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
+				0.0,
+				0.0);
 		}
 	}
 
@@ -666,9 +691,18 @@ int main(int argc, const char* argv[])
                 break;
 			}
 
+			// write walker information to site
 			if(pWalkersOutStream)
 			{
-				fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\n", j+1, i, pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy, pWalkerArray[i].squareDistanceFromOrigin());
+				CWalkerPoint realPosition;
+				realPosition = pWalkerArray[i].realPosition(cellBounds);
+				fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+					j+1, i,
+					realPosition.m_fx, realPosition.m_fy,
+					pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy,
+					pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
+					pWalkerArray[i].squareDistanceFromOrigin(&cellBounds),
+					pWalkerArray[i].distanceFromOrigin(&cellBounds));
 			}
 
 			if(bBouncedOnBarrier)
@@ -683,6 +717,7 @@ int main(int argc, const char* argv[])
 		fAverageX /= (double)nWalkers;
 		fAverageY /= (double)nWalkers;
 
+		// write statistical information to file
 		if(j > nFirstIterationToPrint)
 		{
             fprintf(pStatisticsOutStream, "%d\t%f\t%u\t%u\t%f\t%f\t%u\n",
@@ -696,6 +731,7 @@ int main(int argc, const char* argv[])
             );
 		}
 
+		// print some information to stderr every nStepsToShowErr
 		if(!(j % nStepsToShowErr))
 		{
 			gettimeofday(&time_data_current, NULL);
