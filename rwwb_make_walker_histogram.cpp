@@ -147,11 +147,14 @@ int main(int argc, char *argv[])
 		puiCount[uiIndex]++;
 	}
 
-	fLinearStep = fMaxValue*((double)uiIntervals);
+	fLinearStep = fMaxValue/((double)uiIntervals);
 
 	for(i = 0; i < uiIntervals; i++)
 	{
-		fprintf(stdout, "%f\t%f\t%f\t%d\n", ((double)i)*fLinearStep, (((double)i)+0.5)*fLinearStep, (((double)i)+1.0)*fLinearStep, puiCount[i]);
+		const double fMinDistance = ((double)i)*fLinearStep;
+		const double fMaxDistance = (((double)i)+1.0)*fLinearStep;
+		const double fRegionArea = M_PI*(square(fMaxDistance)-square(fMinDistance));
+		fprintf(stdout, "%f\t%f\t%f\t%d\t%f\n", fMinDistance, 0.5*(fMinDistance+fMaxDistance), fMaxDistance, puiCount[i], ((double)puiCount[i])/fRegionArea);
 	}
 
 	clean_up:

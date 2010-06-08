@@ -2,22 +2,21 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="RandomWalkerWithBarriers" />
+		<Option title="rwwb_make_walker_histogram" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/Debug/RandomWalkerWithBarriers" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Debug/rwwb_make_walker_histogram" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-wos walker_pos.dat" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/RandomWalkerWithBarriers" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/rwwb_make_walker_histogram" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
@@ -31,12 +30,7 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="random_walk_with_barriers.cpp" />
-		<Unit filename="rwwb_common.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
 		<Extensions>
 			<code_completion />
 			<debugger />

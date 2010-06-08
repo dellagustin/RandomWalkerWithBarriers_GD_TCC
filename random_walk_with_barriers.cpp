@@ -7,19 +7,11 @@
 
 // general helper function declaration {{
 
-// returns the square of fValue
-double square(double fValue);
-
 void close_stream(FILE*&);
 
 // }} general helper function declaration
 
 // general helper function definition {{
-
-double square(double fValue)
-{
-	return fValue * fValue;
-}
 
 void close_stream(FILE*& pStream)
 {
@@ -128,7 +120,7 @@ double CWalkerPoint::squareDistanceTo(const CWalkerPoint& otherPoint) const
 CWalkerPoint::CWalkerPoint()
 {
 	m_fx = 0.0;
-	m_fx = 0.0;
+	m_fy = 0.0;
 }
 
 // CWalkerCircularBarrier implementation {{
@@ -200,8 +192,8 @@ double CWalker::squareDistanceFromOrigin(const CWalkerCellBounds* pcCellBounds) 
 
 	position = pcCellBounds ? realPosition(*pcCellBounds) : m_position;
 
-	double fDeltaX = m_position.m_fx - m_origin.m_fx;
-	double fDeltaY = m_position.m_fy - m_origin.m_fy;
+	double fDeltaX = position.m_fx - m_origin.m_fx;
+	double fDeltaY = position.m_fy - m_origin.m_fy;
 
 	return square(fDeltaX) + square(fDeltaY);
 }
@@ -361,6 +353,20 @@ BOOL iterateWalkerWithBarriers3(CWalker &walker, const CWalkerCircularBarrier* p
     return FALSE;
 }
 
+void report_walker(unsigned int nTime, unsigned int nWalker, const CWalker* pWalkerArray, const CWalkerCellBounds& cellBounds, FILE *pStream)
+{
+	CWalkerPoint realPosition;
+	realPosition = pWalkerArray[nWalker].realPosition(cellBounds);
+
+	fprintf(pStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+		nTime, nWalker,
+		realPosition.m_fx, realPosition.m_fy,
+		pWalkerArray[nWalker].m_position.m_fx, pWalkerArray[nWalker].m_position.m_fy,
+		pWalkerArray[nWalker].m_origin.m_fx, pWalkerArray[nWalker].m_origin.m_fy,
+		pWalkerArray[nWalker].squareDistanceFromOrigin(&cellBounds),
+		pWalkerArray[nWalker].distanceFromOrigin(&cellBounds));
+}
+
 int main(int argc, const char* argv[])
 {
 	CWalker *pWalkerArray = NULL;
@@ -386,6 +392,7 @@ int main(int argc, const char* argv[])
     FILE *pStatisticsOutStream = stdout;
 	FILE *pWalkersOutStream = NULL;
 	FILE *pWalkersStartOutStream = NULL;
+	FILE *pWalkersEndOutStream = NULL;
 	FILE *pBarriersOutStream = NULL;
 	struct timeval time_data_start;
 	struct timeval time_data_current;
@@ -467,6 +474,16 @@ int main(int argc, const char* argv[])
             pWalkersStartOutStream = fopen(argv[i+1], "wt");
 
             if(!pWalkersStartOutStream)
+            {
+                fprintf(stderr, "# Failed to open file for walkers starting position data storage.\n");
+                return 0;
+            }
+		}
+		else if(!strcmp(argv[i]+1, "weof")) // out file for barrier position...
+		{
+            pWalkersEndOutStream = fopen(argv[i+1], "wt");
+
+            if(!pWalkersEndOutStream)
             {
                 fprintf(stderr, "# Failed to open file for walkers starting position data storage.\n");
                 return 0;
@@ -636,18 +653,12 @@ int main(int argc, const char* argv[])
 
 		if(pWalkersStartOutStream)
 		{
-			fprintf(pWalkersStartOutStream, "%d\t%f\t%f\n", i, pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy);
+			report_walker(0, i, pWalkerArray, cellBounds, pWalkersStartOutStream);
 		}
 
 		if(pWalkersOutStream)
 		{
-			fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
-				0, i,
-				pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
-				pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
-				pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
-				0.0,
-				0.0);
+			report_walker(0, i, pWalkerArray, cellBounds, pWalkersOutStream);
 		}
 	}
 
@@ -694,15 +705,7 @@ int main(int argc, const char* argv[])
 			// write walker information to site
 			if(pWalkersOutStream)
 			{
-				CWalkerPoint realPosition;
-				realPosition = pWalkerArray[i].realPosition(cellBounds);
-				fprintf(pWalkersOutStream, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
-					j+1, i,
-					realPosition.m_fx, realPosition.m_fy,
-					pWalkerArray[i].m_position.m_fx, pWalkerArray[i].m_position.m_fy,
-					pWalkerArray[i].m_origin.m_fx, pWalkerArray[i].m_origin.m_fy,
-					pWalkerArray[i].squareDistanceFromOrigin(&cellBounds),
-					pWalkerArray[i].distanceFromOrigin(&cellBounds));
+				report_walker(j+1, i, pWalkerArray, cellBounds, pWalkersOutStream);
 			}
 
 			if(bBouncedOnBarrier)
@@ -751,10 +754,21 @@ int main(int argc, const char* argv[])
 	gettimeofday(&time_data_current, NULL);
     fprintf(stderr, "# Simulation complete in %u segundos.\n", (unsigned int)(time_data_current.tv_sec - time_data_old.tv_sec));
 
+    if(pWalkersEndOutStream)
+	{
+		fprintf(stderr, "# Writing final state of walkers.\n");
+
+		for(i = 0; i < nWalkers; i++)
+		{
+			report_walker(nIterations, i, pWalkerArray, cellBounds, pWalkersEndOutStream);
+		}
+	}
+
 clean_up:
 
 	close_stream(pStatisticsOutStream);
 	close_stream(pWalkersOutStream);
+	close_stream(pWalkersEndOutStream);
 
 	// deallocate memory
 	delete [] pWalkerArray;
